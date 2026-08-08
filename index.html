@@ -38,7 +38,14 @@ h1{margin:5px 0;font-size:24px}
     <div id="hasilKode" class="kode"></div>
     <div id="hasilJam" class="jam"></div>
   </div>
-  <div class="sound-note">Suara aktif setelah halaman disentuh sekali.</div>
+  <button id="tesSuara" type="button"
+      onclick="tesSuara()"
+      style="margin-top:10px;padding:10px 18px;border:0;border-radius:8px;cursor:pointer;font-weight:bold;">
+      🔊 Tes Suara
+    </button>
+    <div class="sound-note">
+      Tekan sekali untuk mengaktifkan suara. Volume beep dapat disesuaikan dari kode.
+    </div>
 </div>
 
 <script>
@@ -79,7 +86,7 @@ function beep(frekuensi=880,durasi=120,jeda=0){
     osc.frequency.setValueAtTime(frekuensi,mulai);
 
     gain.gain.setValueAtTime(0.0001,mulai);
-    gain.gain.exponentialRampToValueAtTime(0.18,mulai+0.01);
+    gain.gain.exponentialRampToValueAtTime(0.65,mulai+0.01);
     gain.gain.exponentialRampToValueAtTime(0.0001,mulai+durasi/1000);
 
     osc.connect(gain);
@@ -89,6 +96,21 @@ function beep(frekuensi=880,durasi=120,jeda=0){
     osc.stop(mulai+durasi/1000+0.03);
   }catch(e){
     console.log('Beep gagal:',e);
+  }
+}
+
+function tesSuara(){
+  siapkanSuara();
+
+  // Tes suara: dua nada yang jelas.
+  beep(1000,180,0);
+  beep(1400,220,230);
+
+  const tombol=document.getElementById('tesSuara');
+  if(tombol){
+    const teksLama=tombol.textContent;
+    tombol.textContent='🔊 Suara Aktif';
+    setTimeout(()=>{tombol.textContent=teksLama;},1500);
   }
 }
 
