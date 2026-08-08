@@ -96,14 +96,59 @@ async function mulaiScanner(){
   }
 }
 
+function ambilKodeAtletDariQR(decodedText){
+  const teks=String(decodedText||'').trim();
+
+  // 1. Jika QR langsung berisi kode seperti TKD1
+  if(/^TKD\\d+$/i.test(teks)){
+    return teks.toUpperCase();
+  }
+
+  // 2. Jika QR berisi URL Google Form pre-filled seperti:
+  // ...viewform?entry.2087991553=TKD1&entry.527279397=HADIR
+  try{
+    const url=new URL(teks);
+    const parameterKode=url.searchParams.get('entry.2087991553');
+    if(parameterKode && /^TKD\\d+$/i.test(parameterKode.trim())){
+      return parameterKode.trim().toUpperCase();
+    }
+
+    // 3. Cadangan: cari parameter entry yang nilainya berbentuk TKD1, TKD2, dst.
+    for(const [nama,nilai] of url.searchParams.entries()){
+      if(/^TKD\\d+$/i.test(String(nilai).trim())){
+        return String(nilai).trim().toUpperCase();
+      }
+    }
+  }catch(e){
+    // Bukan URL, lanjutkan pemeriksaan biasa.
+  }
+
+  return null;
+}
+
 function ketikaQRTerbaca(decodedText){
   if(sedangMemproses)return;
   sedangMemproses=true;
 
-  const kode=String(decodedText||'').trim().toUpperCase();
+  const kode=ambilKodeAtletDariQR(decodedText);
+
   hentikanScanner();
   sembunyikanHasil();
-  tampilStatus('QR terbaca. Menyimpan absensi...','info');
+
+  if(!kode){
+    tampilStatus('❌ QR terbaca, tetapi kode atlet tidak ditemukan.','error');
+    tampilHasil(
+      '❌',
+      '',
+      String(decodedText||'').substring(0,80),
+      'QR harus berisi kode seperti TKD1 atau QR Google Form yang memuat kode atlet.',
+      'error'
+    );
+    setTimeout(mulaiLagi,3000);
+    return;
+  }
+
+  tampilStatus('QR terbaca: '+kode+'. Menyimpan absensi...','info');
   kirimAbsensi(kode);
 }
 
