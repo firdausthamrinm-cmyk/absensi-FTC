@@ -1,454 +1,207 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <meta name="theme-color" content="#111827">
-  <title>Absensi Atlet FTC</title>
-
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f3f4f6;
-      color: #111827;
-      text-align: center;
-    }
-    .container {
-      width: 100%;
-      max-width: 520px;
-      margin: auto;
-      padding: 18px 14px 30px;
-    }
-    h1 { margin: 4px 0; font-size: 25px; }
-    .sub { color: #6b7280; margin: 0 0 16px; font-size: 14px; }
-
-    #reader {
-      width: 100%;
-      max-width: 450px;
-      margin: auto;
-      background: #000;
-      border-radius: 16px;
-      overflow: hidden;
-    }
-
-    #reader video {
-      width: 100% !important;
-      height: auto !important;
-    }
-
-    .status {
-      margin-top: 14px;
-      padding: 14px;
-      border-radius: 12px;
-      font-size: 15px;
-      font-weight: 600;
-    }
-    .info { background: #dbeafe; color: #1e40af; }
-    .success { background: #d1fae5; color: #065f46; }
-    .warning { background: #fef3c7; color: #92400e; }
-    .error { background: #fee2e2; color: #991b1b; }
-
-    #hasil {
-      margin-top: 12px;
-      padding: 16px;
-      border-radius: 12px;
-    }
-    .hidden { display: none; }
-    .nama { font-size: 23px; font-weight: 700; margin-top: 7px; }
-    .kode { margin-top: 5px; color: #4b5563; }
-    .jam { margin-top: 5px; color: #6b7280; }
-    .small { margin-top: 14px; color: #6b7280; font-size: 12px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Absensi Atlet FTC</title>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;padding:0;font-family:Arial,sans-serif;background:#f2f4f7;text-align:center}
+.container{width:100%;max-width:500px;margin:auto;padding:15px}h1{margin:5px 0;font-size:24px}.subtitle{color:#666;margin-bottom:15px}
+#reader{width:100%;max-width:430px;margin:auto;background:#000;border-radius:15px;overflow:hidden}
+#reader video{width:100%!important;height:auto!important}.status{margin-top:15px;padding:14px;border-radius:10px;background:white}
+.info{background:#e0f2fe;color:#075985}.success{background:#d1fae5;color:#065f46}.error{background:#fee2e2;color:#991b1b}.warning{background:#fef3c7;color:#92400e}
+.nama{font-size:22px;font-weight:bold;margin-top:8px}.kode{margin-top:5px;color:#555}.jam{margin-top:5px;color:#666}.hidden{display:none}
+</style>
 </head>
-
 <body>
-  <div class="container">
-    <h1>ABSENSI ATLET FTC</h1>
-    <div class="sub">Arahkan QR Code atlet ke kamera</div>
-
-    <div id="reader"></div>
-
-    <div id="status" class="status info">
-      Menyalakan kamera...
-    </div>
-
-    <div id="hasil" class="hidden">
-      <div id="hasilIcon"></div>
-      <div id="hasilNama" class="nama"></div>
-      <div id="hasilKode" class="kode"></div>
-      <div id="hasilJam" class="jam"></div>
-    </div>
-
-    <div class="small">
-      Scanner ini hanya membaca QR dan mengirim kode ke sistem absensi FTC.
-    </div>
-  </div>
+<div class="container">
+<h1>ABSENSI ATLET FTC</h1>
+<div class="subtitle">Arahkan QR Code ke kamera</div>
+<div id="reader"></div>
+<div id="status" class="status info">Memeriksa kamera...</div>
+<div id="hasil" class="status hidden">
+<div id="hasilIcon"></div><div id="hasilNama" class="nama"></div>
+<div id="hasilKode" class="kode"></div><div id="hasilJam" class="jam"></div>
+</div>
+</div>
 
 <script>
-  /*
-   * ============================================================
-   * WAJIB DIISI
-   * ============================================================
-   *
-   * Masukkan URL Web App Apps Script absensi Anda.
-   *
-   * Contoh:
-   * https://script.google.com/macros/s/AKfycbxxxxxxxxxxxxxxxx/exec
-   */
-  const API_URL =
-    'TEMPEL_URL_WEB_APP_ABSENSI_ANDA_DI_SINI';
+/*
+ * URL WEB APP ABSENSI BAPAK
+ */
+const API_URL='https://script.google.com/macros/s/AKfycbztP46ZHQcF9lOqFDFbilVj9eOgBvlpRxd4CgsMpikqbD4DyBhKTlEYu3kww_nR9EOl/exec';
 
+let scanner=null, scannerAktif=false, sedangMemproses=false;
 
-  let scanner = null;
-  let scannerAktif = false;
-  let sedangMemproses = false;
-  let kameraSedangDimulai = false;
+function tampilStatus(pesan,tipe='info'){
+  const el=document.getElementById('status');
+  el.textContent=pesan;
+  el.className='status '+tipe;
+}
+function tampilHasil(icon,nama,kode,jam,tipe){
+  document.getElementById('hasil').className='status '+tipe;
+  document.getElementById('hasilIcon').textContent=icon;
+  document.getElementById('hasilNama').textContent=nama||'';
+  document.getElementById('hasilKode').textContent=kode?'Kode: '+kode:'';
+  document.getElementById('hasilJam').textContent=jam||'';
+}
+function sembunyikanHasil(){document.getElementById('hasil').className='status hidden';}
 
+async function mulaiScanner(){
+  if(scannerAktif)return;
+  try{
+    tampilStatus('Meminta izin kamera...','info');
 
-  function setStatus(pesan, tipe) {
-    const el = document.getElementById('status');
-    el.textContent = pesan;
-    el.className = 'status ' + (tipe || 'info');
-  }
+    const stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:'environment'}},audio:false
+    });
+    stream.getTracks().forEach(track=>track.stop());
 
+    tampilStatus('Mencari kamera...','info');
+    const cameras=await Html5Qrcode.getCameras();
+    if(!cameras||!cameras.length)throw new Error('Tidak ada kamera yang ditemukan.');
 
-  function tampilHasil(icon, nama, kode, jam, tipe) {
-    const el = document.getElementById('hasil');
-    el.className = 'status ' + tipe;
+    let kamera=cameras.find(c=>{
+      const label=String(c.label||'').toLowerCase();
+      return label.includes('back')||label.includes('rear')||
+             label.includes('environment')||label.includes('belakang');
+    });
+    if(!kamera)kamera=cameras[cameras.length-1];
 
-    document.getElementById('hasilIcon').textContent = icon;
-    document.getElementById('hasilNama').textContent = nama || '';
-    document.getElementById('hasilKode').textContent =
-      kode ? 'Kode: ' + kode : '';
-    document.getElementById('hasilJam').textContent = jam || '';
-  }
+    scanner=new Html5Qrcode('reader');
 
-
-  function sembunyikanHasil() {
-    document.getElementById('hasil').className = 'hidden';
-  }
-
-
-  async function mulaiScanner() {
-
-    if (scannerAktif || kameraSedangDimulai) return;
-
-    if (!API_URL.startsWith('https://')) {
-      setStatus('URL API belum diisi pada index.html.', 'error');
-      return;
-    }
-
-    kameraSedangDimulai = true;
-
-    try {
-      setStatus('Meminta izin kamera...', 'info');
-
-      /*
-       * Meminta izin kamera dari halaman HTTPS utama.
-       * Ini berbeda dengan HTML Service Apps Script,
-       * sehingga browser dapat memberikan izin kamera.
-       */
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
-        audio: false
-      });
-
-      stream.getTracks().forEach(track => track.stop());
-
-      setStatus('Mencari kamera belakang...', 'info');
-
-      const cameras = await Html5Qrcode.getCameras();
-
-      if (!cameras || cameras.length === 0) {
-        throw new Error('Kamera tidak ditemukan.');
-      }
-
-      let kameraBelakang = cameras.find(camera => {
-        const label = String(camera.label || '').toLowerCase();
-        return label.includes('back') ||
-               label.includes('rear') ||
-               label.includes('environment') ||
-               label.includes('belakang');
-      });
-
-      if (!kameraBelakang) {
-        kameraBelakang = cameras[cameras.length - 1];
-      }
-
-      scanner = new Html5Qrcode('reader');
-
-      await scanner.start(
-        kameraBelakang.id,
-        {
-          fps: 10,
-          qrbox: function(width, height) {
-            const size = Math.floor(
-              Math.min(width, height) * 0.70
-            );
-            return { width: size, height: size };
-          }
-        },
-        ketikaQRTerbaca,
-        function() {}
-      );
-
-      scannerAktif = true;
-      kameraSedangDimulai = false;
-
-      setStatus('Kamera aktif. Arahkan QR atlet.', 'info');
-
-    } catch (err) {
-      kameraSedangDimulai = false;
-      scannerAktif = false;
-      console.error(err);
-
-      let pesan = 'Kamera tidak dapat digunakan.';
-
-      if (err.name === 'NotAllowedError') {
-        pesan =
-          'Izin kamera ditolak. Izinkan kamera untuk situs scanner ini.';
-      } else if (err.name === 'NotFoundError') {
-        pesan = 'Kamera tidak ditemukan pada HP.';
-      } else if (err.name === 'NotReadableError') {
-        pesan =
-          'Kamera sedang digunakan aplikasi lain. Tutup aplikasi tersebut.';
-      } else if (err.name === 'SecurityError') {
-        pesan =
-          'Akses kamera diblokir browser. Pastikan halaman dibuka melalui HTTPS.';
-      } else if (err.message) {
-        pesan += ' ' + err.message;
-      }
-
-      setStatus(pesan, 'error');
-    }
-  }
-
-
-  async function hentikanScanner() {
-    if (!scanner || !scannerAktif) return;
-
-    try {
-      await scanner.stop();
-    } catch (err) {
-      console.error(err);
-    }
-
-    scannerAktif = false;
-  }
-
-
-  function ketikaQRTerbaca(decodedText) {
-
-    if (sedangMemproses) return;
-
-    sedangMemproses = true;
-
-    const kode = String(decodedText || '')
-      .trim()
-      .toUpperCase();
-
-    hentikanScanner();
-
-    sembunyikanHasil();
-
-    setStatus(
-      'QR terbaca (' + kode + '). Menyimpan absensi...',
-      'info'
-    );
-
-    kirimKeAppsScript(kode);
-  }
-
-
-  /*
-   * JSONP:
-   * Halaman scanner berada di luar Apps Script.
-   * Kita membuat <script> sementara agar hasil dari
-   * Apps Script dapat diterima tanpa masalah CORS.
-   */
-  function kirimKeAppsScript(kode) {
-
-    if (!API_URL.startsWith('https://')) {
-      setStatus('URL API belum benar.', 'error');
-      sedangMemproses = false;
-      return;
-    }
-
-    const callbackName =
-      'absenCallback_' +
-      Date.now() +
-      '_' +
-      Math.floor(Math.random() * 100000);
-
-    const script = document.createElement('script');
-
-    let selesai = false;
-
-    window[callbackName] = function(hasil) {
-      selesai = true;
-
-      try {
-        prosesHasil(hasil);
-      } finally {
-        cleanup();
+    const config={
+      fps:10,
+      qrbox:(width,height)=>{
+        const ukuran=Math.floor(Math.min(width,height)*0.70);
+        return {width:ukuran,height:ukuran};
       }
     };
 
-    function cleanup() {
-      delete window[callbackName];
+    await scanner.start(kamera.id,config,ketikaQRTerbaca,()=>{});
+    scannerAktif=true;
+    tampilStatus('Kamera siap. Arahkan QR atlet.','info');
 
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
-      }
-    }
+  }catch(error){
+    console.error(error);
+    scannerAktif=false;
+    let pesan='Kamera tidak dapat digunakan.';
+    if(error.name==='NotAllowedError')pesan='Izin kamera ditolak. Izinkan kamera untuk situs ini.';
+    else if(error.name==='NotFoundError')pesan='Kamera tidak ditemukan pada perangkat.';
+    else if(error.name==='NotReadableError')pesan='Kamera sedang digunakan aplikasi lain.';
+    else if(error.name==='SecurityError')pesan='Browser memblokir kamera. Pastikan halaman menggunakan HTTPS.';
+    else if(error.message)pesan+=' '+error.message;
+    tampilStatus(pesan,'error');
+  }
+}
 
-    script.onerror = function() {
-      if (selesai) return;
+function ketikaQRTerbaca(decodedText){
+  if(sedangMemproses)return;
+  sedangMemproses=true;
 
-      cleanup();
+  const kode=String(decodedText||'').trim().toUpperCase();
+  hentikanScanner();
+  sembunyikanHasil();
+  tampilStatus('QR terbaca. Menyimpan absensi...','info');
+  kirimAbsensi(kode);
+}
 
-      setStatus(
-        'Tidak dapat terhubung ke server absensi.',
-        'error'
-      );
+/*
+ * Menggunakan JSONP agar halaman GitHub Pages dapat
+ * meminta respons dari Web App Apps Script.
+ */
+function kirimAbsensi(kode){
+  const callbackName='absenCallback_'+Date.now()+'_'+Math.floor(Math.random()*100000);
+  const script=document.createElement('script');
+  let selesai=false;
 
-      tampilHasil(
-        '❌',
-        '',
-        kode,
-        'Periksa URL Web App Apps Script.',
-        'error'
-      );
+  window[callbackName]=function(hasil){
+    selesai=true;
+    prosesHasil(hasil,kode);
+    bersihkan();
+  };
 
-      setTimeout(mulaiLagi, 3000);
-    };
-
-    const url =
-      API_URL +
-      '?action=absen' +
-      '&kode=' + encodeURIComponent(kode) +
-      '&callback=' + encodeURIComponent(callbackName);
-
-    script.src = url;
-
-    document.body.appendChild(script);
+  function bersihkan(){
+    delete window[callbackName];
+    if(script.parentNode)script.parentNode.removeChild(script);
   }
 
+  script.onerror=function(){
+    if(selesai)return;
+    bersihkan();
+    tampilStatus('Tidak dapat terhubung ke server absensi.','error');
+    tampilHasil('❌','',kode,'Periksa Web App Code.gs.','error');
+    setTimeout(mulaiLagi,3000);
+  };
 
-  function prosesHasil(hasil) {
+  const url=API_URL+
+    '?action=absen'+
+    '&kode='+encodeURIComponent(kode)+
+    '&callback='+encodeURIComponent(callbackName);
 
-    if (!hasil) {
-      setStatus('Tidak ada respons dari server.', 'error');
-      setTimeout(mulaiLagi, 3000);
-      return;
-    }
+  script.src=url;
+  document.body.appendChild(script);
+}
 
-    if (hasil.berhasil === true) {
-
-      setStatus('✓ ABSENSI BERHASIL', 'success');
-
-      tampilHasil(
-        '✓',
-        hasil.nama,
-        hasil.kode,
-        'Jam: ' + hasil.jam,
-        'success'
-      );
-
-      setTimeout(mulaiLagi, 2500);
-      return;
-    }
-
-    if (hasil.tipe === 'SUDAH_ABSEN') {
-
-      setStatus('⚠ SUDAH ABSEN', 'warning');
-
-      tampilHasil(
-        '⚠️',
-        hasil.nama,
-        hasil.kode,
-        hasil.pesan,
-        'warning'
-      );
-
-      setTimeout(mulaiLagi, 2500);
-      return;
-    }
-
-    if (hasil.tipe === 'TIDAK_DITEMUKAN') {
-
-      setStatus('❌ QR TIDAK TERDAFTAR', 'error');
-
-      tampilHasil(
-        '❌',
-        '',
-        '',
-        hasil.pesan,
-        'error'
-      );
-
-      setTimeout(mulaiLagi, 2500);
-      return;
-    }
-
-    if (hasil.tipe === 'JADWAL') {
-
-      setStatus('⏰ ABSENSI BELUM DIBUKA', 'warning');
-
-      tampilHasil(
-        '⏰',
-        '',
-        '',
-        hasil.pesan,
-        'warning'
-      );
-
-      setTimeout(mulaiLagi, 3000);
-      return;
-    }
-
-    setStatus(
-      hasil.pesan || 'Absensi gagal.',
-      'error'
-    );
-
-    tampilHasil(
-      '❌',
-      hasil.nama || '',
-      hasil.kode || '',
-      hasil.pesan || '',
-      'error'
-    );
-
-    setTimeout(mulaiLagi, 3000);
+function prosesHasil(hasil,kode){
+  if(!hasil){
+    tampilStatus('Tidak ada respons dari server.','error');
+    setTimeout(mulaiLagi,3000);
+    return;
   }
 
-
-  async function mulaiLagi() {
-
-    sedangMemproses = false;
-
-    sembunyikanHasil();
-
-    scanner = null;
-
-    setStatus(
-      'Menyalakan kamera...',
-      'info'
-    );
-
-    await mulaiScanner();
+  if(hasil.berhasil===true){
+    tampilStatus('✓ ABSENSI BERHASIL','success');
+    tampilHasil('✓',hasil.nama,hasil.kode||kode,
+      hasil.jam?'Jam: '+hasil.jam:'Absensi tercatat','success');
+    setTimeout(mulaiLagi,3000);
+    return;
   }
 
+  if(hasil.tipe==='SUDAH_ABSEN'){
+    tampilStatus('⚠ SUDAH ABSEN','warning');
+    tampilHasil('⚠️',hasil.nama||'',hasil.kode||kode,
+      hasil.pesan||'Atlet sudah absen.','warning');
+    setTimeout(mulaiLagi,3000);
+    return;
+  }
 
-  window.addEventListener('load', function() {
-    mulaiScanner();
-  });
+  if(hasil.tipe==='TIDAK_DITEMUKAN'){
+    tampilStatus('❌ QR TIDAK TERDAFTAR','error');
+    tampilHasil('❌','',kode,
+      hasil.pesan||'Kode atlet tidak ditemukan.','error');
+    setTimeout(mulaiLagi,3000);
+    return;
+  }
+
+  if(hasil.tipe==='JADWAL'){
+    tampilStatus('⏰ ABSENSI BELUM DIBUKA','warning');
+    tampilHasil('⏰','',kode,hasil.pesan||'','warning');
+    setTimeout(mulaiLagi,3000);
+    return;
+  }
+
+  tampilStatus(hasil.pesan||'Absensi gagal.','error');
+  tampilHasil('❌',hasil.nama||'',hasil.kode||kode,hasil.pesan||'','error');
+  setTimeout(mulaiLagi,3000);
+}
+
+async function hentikanScanner(){
+  if(!scanner||!scannerAktif)return;
+  try{await scanner.stop();}catch(error){console.error(error);}
+  scannerAktif=false;
+}
+
+async function mulaiLagi(){
+  sedangMemproses=false;
+  sembunyikanHasil();
+  scanner=null;
+  tampilStatus('Menyalakan kamera...','info');
+  await mulaiScanner();
+}
+
+window.addEventListener('load',()=>mulaiScanner());
 </script>
-
 </body>
 </html>
