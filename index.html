@@ -99,28 +99,37 @@ async function mulaiScanner(){
 function ambilKodeAtletDariQR(decodedText){
   const teks=String(decodedText||'').trim();
 
-  // 1. Jika QR langsung berisi kode seperti TKD1
-  if(/^TKD\\d+$/i.test(teks)){
+  // 1. QR langsung berisi kode atlet, misalnya TKD1
+  if(/^TKD\d+$/i.test(teks)){
     return teks.toUpperCase();
   }
 
-  // 2. Jika QR berisi URL Google Form pre-filled seperti:
-  // ...viewform?entry.2087991553=TKD1&entry.527279397=HADIR
+  // 2. QR berisi URL Google Form dengan kode atlet pada parameter
+  //    Contoh: ...?entry.2087991553=TKD1&entry.527279397=HADIR
   try{
     const url=new URL(teks);
+
+    // Parameter kode atlet yang sudah diketahui
     const parameterKode=url.searchParams.get('entry.2087991553');
-    if(parameterKode && /^TKD\\d+$/i.test(parameterKode.trim())){
+    if(parameterKode && /^TKD\d+$/i.test(parameterKode.trim())){
       return parameterKode.trim().toUpperCase();
     }
 
-    // 3. Cadangan: cari parameter entry yang nilainya berbentuk TKD1, TKD2, dst.
+    // Cari semua parameter URL yang nilainya berupa TKD1, TKD2, dst.
     for(const [nama,nilai] of url.searchParams.entries()){
-      if(/^TKD\\d+$/i.test(String(nilai).trim())){
-        return String(nilai).trim().toUpperCase();
+      const nilaiBersih=String(nilai).trim();
+      if(/^TKD\d+$/i.test(nilaiBersih)){
+        return nilaiBersih.toUpperCase();
       }
     }
   }catch(e){
-    // Bukan URL, lanjutkan pemeriksaan biasa.
+    // Jika bukan URL yang lengkap, lanjutkan ke pencarian teks.
+  }
+
+  // 3. Cadangan: cari pola TKD1/TKD2/... di seluruh hasil scan
+  const cocok=teks.match(/\bTKD\d+\b/i);
+  if(cocok){
+    return cocok[0].toUpperCase();
   }
 
   return null;
@@ -140,7 +149,7 @@ function ketikaQRTerbaca(decodedText){
     tampilHasil(
       '❌',
       '',
-      String(decodedText||'').substring(0,80),
+      String(decodedText||''),
       'QR harus berisi kode seperti TKD1 atau QR Google Form yang memuat kode atlet.',
       'error'
     );
